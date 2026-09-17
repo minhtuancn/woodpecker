@@ -1,0 +1,5 @@
+# Ignore everything except what's needed for Docker build
+*
+!dist/
+!docker/
+!web/dist
