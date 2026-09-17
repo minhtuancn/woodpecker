@@ -13,7 +13,7 @@ env:
   IMAGE_AGENT: ${{ github.repository_owner }}/woodpecker-agent
 
 jobs:
-  build-server:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -23,13 +23,7 @@ jobs:
 
     strategy:
       matrix:
-        include:
-          - platform: linux/amd64
-            targetos: linux
-            targetarch: amd64
-          - platform: linux/arm64
-            targetos: linux
-            targetarch: arm64
+        platform: [linux/amd64]
 
     steps:
       - name: Checkout repository
@@ -67,10 +61,20 @@ jobs:
       - name: Build server binary
         env:
           CGO_ENABLED: 1
-          GOOS: ${{ matrix.targetos }}
-          GOARCH: ${{ matrix.targetarch }}
+          GOOS: linux
+          GOARCH: amd64
         run: |
-          go build -tags 'grpcnotrace' -ldflags '-s -w' -o dist/server/${{ matrix.targetos }}_${{ matrix.targetarch }}/woodpecker-server go.woodpecker-ci.org/woodpecker/v3/cmd/server
+          mkdir -p dist/server/linux_amd64
+          go build -tags 'grpcnotrace' -ldflags '-s -w' -o dist/server/linux_amd64/woodpecker-server go.woodpecker-ci.org/woodpecker/v3/cmd/server
+
+      - name: Build agent binary
+        env:
+          CGO_ENABLED: 0
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          mkdir -p dist/agent/linux_amd64
+          go build -tags 'grpcnotrace' -ldflags '-s -w' -o dist/agent/linux_amd64/woodpecker-agent go.woodpecker-ci.org/woodpecker/v3/cmd/agent
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -98,52 +102,12 @@ jobs:
         with:
           context: .
           file: docker/Dockerfile.server.multiarch.rootless
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-server.outputs.tags }}
           labels: ${{ steps.meta-server.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  build-agent:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      attestations: write
-      id-token: write
-
-    strategy:
-      matrix:
-        platform: [linux/amd64, linux/arm64]
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-          cache-dependency-path: go.sum
-
-      - name: Build agent binary
-        env:
-          CGO_ENABLED: 0
-          GOOS: linux
-          GOARCH: ${{ matrix.platform }}
-        run: |
-          go build -tags 'grpcnotrace' -ldflags '-s -w' -o dist/agent/linux_${{ matrix.platform }}/woodpecker-agent go.woodpecker-ci.org/woodpecker/v3/cmd/agent
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata for Agent
         id: meta-agent
@@ -161,7 +125,7 @@ jobs:
         with:
           context: .
           file: docker/Dockerfile.agent.multiarch
-          platforms: linux/${{ matrix.platform }}
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-agent.outputs.tags }}
           labels: ${{ steps.meta-agent.outputs.labels }}
