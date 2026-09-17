@@ -1,0 +1,18 @@
+FROM docker.io/alpine:3.24
+
+ARG TARGETOS TARGETARCH
+RUN apk add -U --no-cache ca-certificates tzdata docker-cli && \
+  adduser -u 1000 -g 1000 woodpecker -D && \
+  mkdir -p /var/lib/woodpecker && \
+  chown -R woodpecker:woodpecker /var/lib/woodpecker
+
+ENV GODEBUG=netdns=go
+ENV WOODPECKER_IN_CONTAINER=true
+EXPOSE 3000
+
+COPY dist/agent/${TARGETOS}_${TARGETARCH}/woodpecker-agent /bin/
+
+USER woodpecker
+
+HEALTHCHECK CMD ["/bin/woodpecker-agent", "ping"]
+ENTRYPOINT ["/bin/woodpecker-agent"]

@@ -101,7 +101,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/Dockerfile.server.alpine.multiarch.rootless
+          file: docker/Dockerfile.server.simple
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-server.outputs.tags }}
@@ -124,7 +124,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: docker/Dockerfile.agent.alpine.multiarch
+          file: docker/Dockerfile.agent.simple
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta-agent.outputs.tags }}
